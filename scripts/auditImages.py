@@ -53,7 +53,6 @@ def main():
     Exclude = ["_legacy"]
     Images = []
     Image_References = []
-    Diff = []
     # Walk the assets directory looking for image files
     for path, subdirs, files in os.walk(Assets_Root, topdown=True):
         # Skip _legacy folder containing previously removed assets
@@ -79,10 +78,11 @@ def main():
                         if linkExt in Extensions:
                             Image_References.append(base + linkExt)
 
-    for image in Images:
-        if image not in Image_References and image not in FalsePositives:
-            Diff.append(image)
-
+    Diff = [
+        image
+        for image in Images
+        if image not in Image_References and image not in FalsePositives
+    ]
     for path, subdirs, files in os.walk(Assets_Root):
         subdirs[:] = [d for d in subdirs if d not in Exclude]
         for name in files:
@@ -90,7 +90,7 @@ def main():
                 fullPath = os.path.join(path, name)
                 if os.path.isfile(os.path.join(Legacy_Root, name)):
                     # Since the files are copied from nested directories there can be naming overlap
-                    newName = os.path.join(Legacy_Root, str(uuid.uuid4()) + "-" + name)
+                    newName = os.path.join(Legacy_Root, f"{str(uuid.uuid4())}-{name}")
                     os.rename(fullPath, newName)
                 else:
                     os.rename(fullPath, os.path.join(Legacy_Root, name))

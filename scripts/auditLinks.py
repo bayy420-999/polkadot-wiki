@@ -60,8 +60,11 @@ def testLink(link):
 # Add url failures to log table
 def logger(test, log, shortPath, links, key):
     # Check for 400 errors - lots of 300 redirects that are still valid
-    if test[1] == 400 or test[1] == 403 or test[1] == 404:
-        log += "|[" + shortPath + "](" + ReporUrl + shortPath + ")|" + str(test[1]) + "|" + key + "|" + links[key] + "|\n"
+    if test[1] in [400, 403, 404]:
+        log += (
+            f"|[{shortPath}]({ReporUrl}{shortPath})|{str(test[1])}|{key}|{links[key]}"
+            + "|\n"
+        )
 
 # Retrieve a page slug from page path
 def getRefSlug(fullPath):
@@ -72,14 +75,11 @@ def getRefSlug(fullPath):
             if line.startswith("slug:"):
                 line = line.replace("slug: ", "")
                 line = line.replace("../", "")
-                slug = line
-                return slug
+                return line
         return None
 
 def main():
-    # Table header
-    emptyLog = "|File|Error|Tag|Url|\n"
-    emptyLog += "|---|---|---|---|\n"
+    emptyLog = "|File|Error|Tag|Url|\n" + "|---|---|---|---|\n"
     # New log
     log = emptyLog
     # Walk the root directory looking for markdown files
@@ -96,7 +96,7 @@ def main():
                     # For each link
                     for key in links:
                         # Log to console (not audit report)
-                        print("Validating: " + key + " - " + links[key])
+                        print(f"Validating: {key} - {links[key]}")
 
                         # Url not supported by regex parser
                         # (Prettier adds these sometimes when attempting
@@ -113,17 +113,15 @@ def main():
                             else:
                                 continue
 
-                        # Current local page reference
                         elif links[key][0] == "#":
                             url = PolkadotUrl + slug + links[key]
                             test = testLink(url)
                             logger(test, log, shortPath, links, key)
 
-                        # Reference to another local md document
                         elif ".md" in links[key]:
+                            fileDir = os.path.dirname(fullPath)
                             # If the link contains a sub-section reference
                             if "#" in links[key]:
-                                fileDir = os.path.dirname(fullPath)
                                 keyBeforeHash = links[key].split("#")[0]
                                 keyBeforeHash = keyBeforeHash.rstrip("/")
                                 linkedFile = os.path.join(fileDir, keyBeforeHash)
@@ -137,30 +135,34 @@ def main():
                                         test = testLink(url)
                                         logger(test, log, shortPath, links, key)
                                     else:
-                                        log += "|[" + shortPath + "](" + ReporUrl + shortPath + ")|failed to get ref slug|" + key + "|" + links[key] + "|\n"
+                                        log += (
+                                            f"|[{shortPath}]({ReporUrl}{shortPath})|failed to get ref slug|{key}|{links[key]}"
+                                            + "|\n"
+                                        )
                                 else:
-                                    log += "|[" + shortPath + "](" + ReporUrl + shortPath + ")|no local file|" + key + "|" + links[key] + "|\n"
+                                    log += (
+                                        f"|[{shortPath}]({ReporUrl}{shortPath})|no local file|{key}|{links[key]}"
+                                        + "|\n"
+                                    )
                             else:
-                                # No '#' present in link, so attempt to navigate to local page directly
-                                fileDir = os.path.dirname(fullPath)
                                 linkedFile = os.path.join(fileDir, links[key])
                                 if not os.path.isfile(linkedFile):
-                                    log += "|[" + shortPath + "](" + ReporUrl + shortPath + ")|no local file|" + key + "|" + links[key] + "|\n"
+                                    log += (
+                                        f"|[{shortPath}]({ReporUrl}{shortPath})|no local file|{key}|{links[key]}"
+                                        + "|\n"
+                                    )
 
-                        # Local image reference
-                        elif links[key][-4:] == ".png" or links[key][-4:] == ".jpg":
+                        elif links[key][-4:] in [".png", ".jpg"]:
                             continue
 
-                        # Link to an email address
                         elif "mailto:" in links[key]:
                             continue
 
-                        # Last effort
                         else:
                             url = PolkadotUrl + links[key]
                             test = testLink(url)
                             logger(test, log, shortPath, links, key)
-    
+
     # Log to console (not audit report)
     print()
     print("Audit Complete.")
@@ -173,8 +175,7 @@ def main():
     else:
         # If an audit report was generated, append report to a new GitHub issue (markdown)
         with open("Audit-Results.md", "w") as text_file:
-            ghIssue = "---\n"
-            ghIssue += "title: Monthly Audit of Wiki/Guide Links\n"
+            ghIssue = "---\n" + "title: Monthly Audit of Wiki/Guide Links\n"
             ghIssue += "labels: audit\n"
             ghIssue += "---\n"
             ghIssue += "# Audit Results\n"
